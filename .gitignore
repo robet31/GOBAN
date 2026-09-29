@@ -1,0 +1,43 @@
+# Dependencies
+/build/
+/android/build/
+/.dart_tool/
+/.packages
+.packages
+pubspec.lock
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Flutter/Dart
+/.flutter-plugins
+/.flutter-plugins-dependencies
+/android/.gradle/
+/android/local.properties
+/ios/Flutter/
+/ios/Pods/
+/ios/.symlinks/
+
+# Environment
+.env
+.env.local
+
+# Generated
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+.vscode/templates
