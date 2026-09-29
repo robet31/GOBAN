@@ -1,72 +1,49 @@
-name: Goban CI
+name: CI
+
+# Check otomatis tiap push ke main/develop + tiap PR ke main/develop.
+# Tujuannya NGECEK doang (bukan benerin): format, analyze, test.
+# Kalau merah -> PR jangan di-merge, benerin dulu di lokal.
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  analyze:
-    name: Analyze & Test
+  check:
+    name: Format · Analyze · Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
+
+      # File .env asli tidak di-commit (ada di .gitignore) tapi pubspec
+      # mendaftarkannya sebagai asset, jadi tanpa file ini `flutter build`
+      # gagal. Pakai dummy dari .env.example khusus buat CI.
+      - name: Setup dummy .env for CI
+        run: cp .env.example .env
+
       - name: Install dependencies
         run: flutter pub get
+
       - name: Verify formatting
         run: dart format --output=none --set-exit-if-changed .
+
       - name: Analyze project source
         run: flutter analyze
+
       - name: Run tests
         run: flutter test
-
-  build-android:
-    name: Build Android APK
-    needs: analyze
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-      - name: Install dependencies
-        run: flutter pub get
-      - name: Build APK
-        run: flutter build apk --release
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: goban-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-
-  build-web:
-    name: Build Web
-    needs: analyze
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - name: Install dependencies
-        run: flutter pub get
-      - name: Build Web
-        run: flutter build web --release
-      - name: Upload Web build
-        uses: actions/upload-artifact@v4
-        with:
-          name: goban-web
-          path: build/web

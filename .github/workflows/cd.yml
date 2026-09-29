@@ -1,0 +1,115 @@
+name: CD
+
+# Build + Release otomatis.
+# - Push ke main      -> build APK + Web, disimpan sebagai Artifacts (90 hari)
+# - Push tag v*       -> bikin GitHub Release + lampirin APK & Web zip
+#   contoh: git tag v1.0.0 && git push origin v1.0.0
+# - Manual            -> tab Actions > CD > Run workflow (buat testing)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # butuh write supaya bisa bikin GitHub Release
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup dummy .env for CI
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: goban-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 90
+
+  build-web:
+    name: Build Web
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Setup dummy .env for CI
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Web
+        run: flutter build web --release
+
+      - name: Upload Web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: goban-web
+          path: build/web
+          retention-days: 90
+
+  release:
+    name: GitHub Release (tag v*)
+    needs: [build-android, build-web]
+    # Jalan HANYA kalau yang di-push itu tag v*, bukan push ke main biasa
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: goban-apk
+          path: dist/apk
+
+      - name: Download Web artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: goban-web
+          path: dist/web
+
+      - name: Zip web build
+        run: zip -r goban-web.zip dist/web
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/apk/app-release.apk
+            goban-web.zip
+          generate_release_notes: true

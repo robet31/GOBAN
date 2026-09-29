@@ -1,0 +1,47 @@
+name: Autofix
+
+# Jawaban buat "CI bisa benerin otomatis gak?": BISA, tapi disengaja
+# dibikin MANUAL (tombol), bukan tiap push. Alasannya:
+# auto-commit tiap push rawan infinite loop & conflict.
+#
+# Cara pakai: tab Actions > Autofix > Run workflow > pilih branch-nya.
+# Workflow ini akan jalanin `dart fix --apply` + `dart format .`
+# terus commit balik ke branch itu.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    name: dart fix + format + commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Setup dummy .env for CI
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Auto-fix lints
+        run: dart fix --apply
+
+      - name: Auto-format
+        run: dart format .
+
+      - name: Commit fixes back
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore: autofix (dart fix + format) [skip ci]'
