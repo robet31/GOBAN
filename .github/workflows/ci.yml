@@ -1,8 +1,12 @@
 name: CI
 
-# Check otomatis tiap push ke main/develop + tiap PR ke main/develop.
-# Tujuannya NGECEK doang (bukan benerin): format, analyze, test.
-# Kalau merah -> PR jangan di-merge, benerin dulu di lokal.
+# WRAPPER SPESIFIK PROJECT GOBAN — tipis aja.
+# Kerjaan beratnya (format/analyze/test) tinggal manggil template global
+# reusable-flutter-check.yml. File ini cuma ngatur:
+# KAPAN jalan (trigger branch) + pakai setting apa (input).
+#
+# Kalau nanti bikin project Flutter lain: copy file ini, ganti branch-nya,
+# template global-nya tetap sama -> flow konsisten antar project.
 
 on:
   push:
@@ -19,31 +23,8 @@ permissions:
 
 jobs:
   check:
-    name: Format · Analyze · Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      # File .env asli tidak di-commit (ada di .gitignore) tapi pubspec
-      # mendaftarkannya sebagai asset, jadi tanpa file ini `flutter build`
-      # gagal. Pakai dummy dari .env.example khusus buat CI.
-      - name: Setup dummy .env for CI
-        run: cp .env.example .env
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Verify formatting
-        run: dart format --output=none --set-exit-if-changed .
-
-      - name: Analyze project source
-        run: flutter analyze
-
-      - name: Run tests
-        run: flutter test
+    name: Flutter Check
+    uses: ./.github/workflows/reusable-flutter-check.yml
+    with:
+      flutter-channel: stable
+      run-tests: true

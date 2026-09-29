@@ -1,0 +1,63 @@
+name: Reusable Flutter Check
+
+# TEMPLATE GLOBAL — bisa dipakai ulang oleh workflow mana pun (workflow_call),
+# bahkan dari repo lain dalam satu organisasi.
+# Isinya langkah standar yang SAMA buat semua project Flutter:
+# format -> analyze -> test. Yang beda-beda (trigger branch, channel
+# Flutter, perlu test atau nggak) dikirim sebagai input dari pemanggil.
+#
+# Contoh pakai dari ci.yml di repo ini:
+#   jobs:
+#     check:
+#       uses: ./.github/workflows/reusable-flutter-check.yml
+#       with:
+#         flutter-channel: stable
+
+on:
+  workflow_call:
+    inputs:
+      flutter-channel:
+        description: 'Flutter channel (stable/beta)'
+        default: 'stable'
+        required: false
+        type: string
+      run-tests:
+        description: 'Jalankan flutter test atau skip (misal buat job build-only)'
+        default: true
+        required: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Format · Analyze · Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ inputs.flutter-channel }}
+          cache: true
+
+      # File .env asli tidak di-commit (ada di .gitignore) tapi pubspec
+      # mendaftarkannya sebagai asset, jadi tanpa file ini `flutter build`
+      # gagal. Pakai dummy dari .env.example khusus buat CI.
+      - name: Setup dummy .env for CI
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze project source
+        run: flutter analyze
+
+      - name: Run tests
+        if: inputs.run-tests == true
+        run: flutter test

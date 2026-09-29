@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # Jaga GitHub Actions tetap up-to-date (global best practice:
+  # action kadaluarsa = risiko keamanan + build tiba-tiba gagal)
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    groups:
+      actions:
+        patterns: ['*']
+
+  # Jaga dependencies Dart/Flutter tetap up-to-date.
+  # Dependabot bikin PR otomatis kalau ada update -> CI ngecek -> tinggal merge.
+  - package-ecosystem: 'pub'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
